@@ -1,11 +1,13 @@
 module FsMinimalOpenApi
 
+#nowarn"3391"
+
 open System
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
-open Microsoft.AspNetCore.OpenApi
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Http.HttpResults 
 
 type TodoItem = {
     id: string
@@ -81,18 +83,22 @@ let main args =
         .WithTags("Todo")
         .WithOpenApi()
     |> ignore
-
+    
     app
         .MapDelete(
             "/todo_items/{id}",
-            Func<string, TodoItem option>(fun id ->
+            Func<string, Results<Ok<TodoItem>, BadRequest<string>>>(fun id ->
                 let item = todo_items |> List.tryFind (fun x -> x.id = id)
 
                 match item with
-                | Some item ->
-                    todo_items <- todo_items |> List.filter (fun x -> x.id <> id)
-                    Some item
-                | None -> None)
+                | Some item -> 
+                    todo_items <- todo_items |> List.filter (fun x -> x.id <> id) 
+                    let resp = TypedResults.Ok(item)  
+                    resp
+                | None -> 
+                    let error = TypedResults.BadRequest ("error")
+                    error
+            )
         )
         .WithTags("Todo")
         .WithOpenApi()
